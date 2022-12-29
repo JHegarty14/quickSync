@@ -1,0 +1,1 @@
+export type Primitive = undefined | null | boolean | string | number | ((...args: Array<any>) => any);
