@@ -1,5 +1,3 @@
-write a readme for the quicksync library
-
 # quicksync
 
 `quicksync` is a library that provides a thread-safe and process-safe way to synchronize data between threads and processes inspired by Clojure Atoms. It is designed to be used in a multi-threaded or multi-process environment where data needs to be shared between threads or processes and to work with Node.js worker threads.
