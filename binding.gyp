@@ -4,7 +4,8 @@
             "target_name": "sharedMemoryNode",
             "sources": ["sharedMemory.cpp"],
             "include_dirs": [
-                "<!(node -p \"require('node-addon-api').include_dir\")",   
+                "<!(node -p \"require('node-addon-api').include_dir\")",
+                "/usr/local/include/rapidjson" 
             ],
             'cflags': [ '-fno-exceptions' ],
             'cflags_cc': [ '-fno-exceptions' ],

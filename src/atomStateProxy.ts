@@ -2,6 +2,7 @@ import { v4 as uuid } from "uuid";
 import { createHash } from "crypto";
 import { Atom } from "./atom";
 import { DeepImmutable } from "./types/common/immutable";
+import { SwapFn } from "./types/domain/swap";
 
 const sharedMemoryNode = require("bindings")("sharedMemoryNode.node");
 
@@ -24,23 +25,23 @@ export class AtomStateProxy {
     }
 
     createAtom<T>(atomRef: string, state: T): void {
-        console.log("ATOM REF", atomRef);
-        const result = sharedMemoryNode.createAtom(atomRef, JSON.stringify(state));
-        console.log("CREATE RESULT", result);
-        console.log("PARSED", JSON.parse(result));
+        const payload = { state };
+        console.log(`${atomRef} PAYLOAD: `, payload);
+        const result = sharedMemoryNode.createAtom(atomRef, JSON.stringify(payload));
+        console.log(atomRef, result);
     }
 
     getState<T>(atom: Atom<T>): DeepImmutable<T> {
         const value = sharedMemoryNode.getAtomValue(atom["@@ref"]);
-        console.log("asdfasdf");
-        console.log("VALUE", typeof value);
-        return JSON.parse(value);
+        console.log(`${atom["@@ref"]}`, value);
+        return JSON.parse(value).state;
     }
 
-    setState<T>(atom: Atom<T>, updateFn: (...args: any[]) => T): void {
+    setState<T>(atom: Atom<T>, updateFn: SwapFn<T>, ...args: any[]): void {
         sharedMemoryNode.compareAndSwap(atom["@@ref"], (loadedValue: string) => {
-            const parsed = JSON.parse(loadedValue);
-            updateFn(loadedValue, )
+            const parsed = JSON.parse(loadedValue).state;
+            const state = updateFn(parsed, ...args);
+            return JSON.stringify({ state });
         });
     }
 

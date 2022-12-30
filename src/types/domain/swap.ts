@@ -1,1 +1,1 @@
-export type SwapFn<T> = (state: T) => T;
+export type SwapFn<T> = (state: T, ...args: any[]) => T;
