@@ -67,7 +67,7 @@ INCS_Debug := \
 	-I/Users/jack/Library/Caches/node-gyp/16.13.2/deps/zlib \
 	-I/Users/jack/Library/Caches/node-gyp/16.13.2/deps/v8/include \
 	-I$(srcdir)/node_modules/node-addon-api \
-	-I/usr/local/include/rapidjson
+	-I$(srcdir)/deps/rapidjson
 
 DEFS_Release := \
 	'-DNODE_GYP_MODULE_NAME=sharedMemoryNode' \
@@ -131,7 +131,7 @@ INCS_Release := \
 	-I/Users/jack/Library/Caches/node-gyp/16.13.2/deps/zlib \
 	-I/Users/jack/Library/Caches/node-gyp/16.13.2/deps/v8/include \
 	-I$(srcdir)/node_modules/node-addon-api \
-	-I/usr/local/include/rapidjson
+	-I$(srcdir)/deps/rapidjson
 
 OBJS := \
 	$(obj).target/$(TARGET)/sharedMemory.o
