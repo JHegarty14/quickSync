@@ -2,7 +2,6 @@ import commonjs from '@rollup/plugin-commonjs';
 import nativePlugin from 'rollup-plugin-natives';
 import typescript from 'rollup-plugin-typescript2';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
-import { terser } from 'rollup-plugin-terser';
 import { builtinModules } from 'module';
 
 export default {
@@ -15,7 +14,6 @@ export default {
   plugins: [
     commonjs(),
     nodeResolve(),
-    terser(),
     typescript({
       tsconfig: 'tsconfig.build.json',
     }),
