@@ -1,5 +1,5 @@
 {
-  "name": "adaimh",
+  "name": "quicksync",
   "version": "0.0.1",
   "description": "A library to support concurrency-safe state management in Typescript",
   "main": "src/index.ts",
