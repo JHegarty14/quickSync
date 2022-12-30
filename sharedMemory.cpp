@@ -1,102 +1,88 @@
-#include <atomic>
-#include <string>
 #include <napi.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <unordered_map>
+#include <semaphore.h>
+#include <mutex>
 #include <iostream>
-#include <errno.h>
+#include <unordered_map>
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
 
-const std::size_t SHM_SIZE = 1024;
-
-template<class T>
-class SharedMem {
-  int fd;
-  T* ptr;
-  const char* name;
-
-  public:    
-    SharedMem(const char* name, bool owner=false) {
-        fd = shm_open(name, O_RDWR | O_CREAT, 0600);
-        if (fd == -1) {
-            std::cerr << "Failed to open a shared memory region" << std::endl;
-            return;
-        }
-        if (ftruncate(fd, sizeof(T)) < 0) {
-            close(fd);
-            std::cerr << "Failed to set size of a shared memory region" << std::endl;
-            return;
-        };
-        ptr = (T*)mmap(nullptr, sizeof(T), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-        if (!ptr) {
-            close(fd);
-            std::cerr << "Failed to mmap a shared memory region" << std::endl;
-            return;
-        }
-        this->name = owner ? name : nullptr;
-    }
-
-    ~SharedMem() {
-        munmap(ptr, sizeof(T));
-        close(fd);
-        if (name) {
-            std::cout << "Remove shared mem instance " << name << std::endl;
-            shm_unlink(name);
-        }
-    }
-
-    T& get() const {
-        return *ptr;
-    }
-};
+Napi::String DocumentToString(const Napi::Env& env, const rapidjson::Document& doc) {
+  rapidjson::StringBuffer buf;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(buf);
+  doc.Accept(writer);
+  return Napi::String::New(env, buf.GetString(), buf.GetSize());
+}
 
 class Atom {
-  private:
-    std::shared_ptr<std::atomic<std::string>> sharedMemory;
-    const char* atomName;
-
   public:
-    Atom(std::string& name, Napi::Value value) {
-      this->atomName = name.c_str();
-      sharedMemory = std::make_shared<std::atomic<std::string>>(value.As<Napi::String>().Utf8Value());
+    Atom(Napi::Env env, const char * atomName, const char * atomValue) : _atomName(atomName) {
+      _semaphore = sem_open(atomName, O_CREAT, 0644, 1);
+      if (_semaphore == SEM_FAILED) {
+        Napi::Error::New(env, "Failed to open semaphore").ThrowAsJavaScriptException();
+      }
+
+      sem_wait(_semaphore);
+      std::lock_guard<std::mutex> lock(_mutex);
+      rapidjson::Document document;
+      document.Parse(atomValue);
+      _atomValue = std::make_shared<rapidjson::Document>(std::move(document));
+      
+      sem_post(_semaphore);
     }
 
     ~Atom() {
-      this->DeleteAtom(atomName);
+      sem_close(_semaphore);
+      sem_unlink(_atomName);
     }
 
-    void CompareAndSwap(Napi::Env env, Napi::Function callback) {
-      std::cout << "CompareAndSwap" << std::endl;
-      std::string loadedVal = sharedMemory->load();
-      Napi::String currentVal = Napi::String::New(env, loadedVal);
+    const char * GetAtomValue(Napi::Env env) {
+      sem_wait(_semaphore);
+      std::lock_guard<std::mutex> lock(_mutex);
+      rapidjson::StringBuffer buffer;
+      rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+      _atomValue->Accept(writer);
 
-      std::string result = callback.Call({ currentVal }).As<Napi::String>().Utf8Value();
+      size_t valueLength = strlen(buffer.GetString()) + 1;
+      char * value = new char[valueLength];
+      strncpy(value, buffer.GetString(), valueLength);
 
-      if (sharedMemory->compare_exchange_strong(loadedVal, result)) {
-        return;
+      sem_post(_semaphore);
+
+      return value;
+    }
+
+    bool CompareAndSwap(Napi::Function callback) {
+      sem_wait(_semaphore);
+      std::lock_guard<std::mutex> lock(_mutex);
+      Napi::Env env = callback.Env();
+      rapidjson::Document *currentDocument = _atomValue.get();
+      if (_atomValue.get() == currentDocument) {
+        std::string callbackResult = callback.Call({ DocumentToString(env, *currentDocument) }).As<Napi::String>().Utf8Value();
+        rapidjson::Document newDocument;
+        newDocument.Parse(callbackResult.c_str());
+        _atomValue = std::make_shared<rapidjson::Document>(std::move(newDocument));
+        sem_post(_semaphore);
+        return true;
       }
-      return CompareAndSwap(env, callback);
+
+      return this->CompareAndSwap(callback);
     }
 
-    std::string GetValue() {
-      return sharedMemory->load();
-    }
-
-    void DeleteAtom(const std::string& name) {
-      shm_unlink(name.c_str());
-    }
+  private:
+    sem_t* _semaphore;
+    std::mutex _mutex;
+    const char * _atomName;
+    std::shared_ptr<rapidjson::Document> _atomValue;
 };
 
-std::unordered_map<std::string, Atom*> atoms;
+std::unordered_map<std::string, std::shared_ptr<Atom>> atomMap;
 
 Napi::Value CreateAtom(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
 
   if (info.Length() < 2) {
     Napi::TypeError::New(env, "Wrong number of arguments").ThrowAsJavaScriptException();
-    return env.Null();
   }
 
   if (!info[0].IsString()) {
@@ -105,15 +91,40 @@ Napi::Value CreateAtom(const Napi::CallbackInfo& info) {
   }
 
   std::string atomRef = info[0].As<Napi::String>().ToString();
-  Napi::String value = info[1].As<Napi::String>();
-  std::string valueString = value.ToString();
+  std::string atomValue = info[1].As<Napi::String>().ToString();
 
-  Atom* atom = new Atom(atomRef, value);
-  atoms[atomRef] = atom;
+  std::shared_ptr<Atom> atom = std::make_shared<Atom>(env, atomRef.c_str(), atomValue.c_str());
 
-  std::string atomStr = atom->GetValue();
+  atomMap[atomRef] = atom;
 
-  return Napi::String::New(env, atomStr);
+  return Napi::Boolean::New(env, true);
+}
+
+Napi::Value GetAtomValue(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+
+  if (!info[0].IsString()) {
+    Napi::TypeError::New(env, "Expected arg for atomRef to be string.").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  std::string atomRef = info[0].As<Napi::String>().ToString();
+
+  std::shared_ptr<Atom> atom = atomMap[atomRef];
+
+  if (atom == nullptr) {
+    Napi::Error::New(env, "Atom not found").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  const char * result = atom->GetAtomValue(env);
+
+  if (strlen(result) < 1) {
+    Napi::Error::New(env, "Atom " + atomRef + " value is empty").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  return Napi::String::New(env, result);
 }
 
 Napi::Value CompareAndSwap(const Napi::CallbackInfo& info) {
@@ -121,7 +132,6 @@ Napi::Value CompareAndSwap(const Napi::CallbackInfo& info) {
 
   if (info.Length() < 2) {
     Napi::TypeError::New(env, "Wrong number of arguments").ThrowAsJavaScriptException();
-    return env.Null();
   }
 
   if (!info[0].IsString()) {
@@ -130,23 +140,23 @@ Napi::Value CompareAndSwap(const Napi::CallbackInfo& info) {
   }
 
   if (!info[1].IsFunction()) {
-    Napi::TypeError::New(env, "Expected arg for callback to be a function.").ThrowAsJavaScriptException();
+    Napi::TypeError::New(env, "Expected arg for callback to be function.").ThrowAsJavaScriptException();
     return env.Null();
   }
 
   std::string atomRef = info[0].As<Napi::String>().ToString();
   Napi::Function callback = info[1].As<Napi::Function>();
 
-  Atom* atom = atoms[atomRef];
+  std::shared_ptr<Atom> atom = atomMap[atomRef];
 
-  if (!atom) {
-    Napi::TypeError::New(env, "Atom does not exist").ThrowAsJavaScriptException();
+  if (atom == nullptr) {
+    Napi::Error::New(env, "Atom not found").ThrowAsJavaScriptException();
     return env.Null();
   }
 
-  atom->CompareAndSwap(env, callback);
+  bool result = atom->CompareAndSwap(callback);
 
-  return;
+  return Napi::Boolean::New(env, result);  
 }
 
 Napi::Value DeleteAtom(const Napi::CallbackInfo& info) {
@@ -154,7 +164,6 @@ Napi::Value DeleteAtom(const Napi::CallbackInfo& info) {
 
   if (info.Length() < 1) {
     Napi::TypeError::New(env, "Wrong number of arguments").ThrowAsJavaScriptException();
-    return env.Null();
   }
 
   if (!info[0].IsString()) {
@@ -164,56 +173,22 @@ Napi::Value DeleteAtom(const Napi::CallbackInfo& info) {
 
   std::string atomRef = info[0].As<Napi::String>().ToString();
 
-  Atom* atom = atoms[atomRef];
-  if (!atom) {
-    Napi::TypeError::New(env, "Atom does not exist").ThrowAsJavaScriptException();
-    return env.Null();
-  }
+  std::shared_ptr<Atom> atom = atomMap[atomRef];
 
-  delete atom;
-  atoms.erase(atomRef);
+  atom->~Atom();
 
-  return env.Null();
-}
+  atomMap.erase(atomRef);
 
-Napi::Value GetAtomValue(const Napi::CallbackInfo& info) {
-  Napi::Env env = info.Env();
-
-  if (info.Length() < 1) {
-    Napi::TypeError::New(env, "Wrong number of arguments").ThrowAsJavaScriptException();
-    return env.Null();
-  }
-
-  if (!info[0].IsString()) {
-    Napi::TypeError::New(env, "Expected arg for atomRef to be string.").ThrowAsJavaScriptException();
-    return env.Null();
-  }
-
-  std::string atomRef = info[0].As<Napi::String>().ToString();
-
-  Atom* atom = atoms[atomRef];
-
-  if (!atom) {
-    Napi::TypeError::New(env, "Atom does not exist").ThrowAsJavaScriptException();
-    return env.Null();
-  }
-
-  std::string atomStr = atom->GetValue();
-
-  return Napi::String::New(env, atomStr);
+  return Napi::Boolean::New(env, true);
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-  exports.Set(Napi::String::New(env, "createAtom"),
-              Napi::Function::New(env, CreateAtom));
-  exports.Set(Napi::String::New(env, "compareAndSwap"),
-              Napi::Function::New(env, CompareAndSwap));
-  exports.Set(Napi::String::New(env, "deleteAtom"),
-              Napi::Function::New(env, DeleteAtom));
-  exports.Set(Napi::String::New(env, "getAtomValue"),
-              Napi::Function::New(env, GetAtomValue));
+  exports.Set(Napi::String::New(env, "createAtom"), Napi::Function::New(env, CreateAtom));
+  exports.Set(Napi::String::New(env, "getAtomValue"), Napi::Function::New(env, GetAtomValue));
+  exports.Set(Napi::String::New(env, "compareAndSwap"), Napi::Function::New(env, CompareAndSwap));
+  exports.Set(Napi::String::New(env, "deleteAtom"), Napi::Function::New(env, DeleteAtom));
 
   return exports;
-};
+}
 
 NODE_API_MODULE(sharedMemoryNode, Init);
