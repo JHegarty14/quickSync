@@ -7,7 +7,6 @@ describe("Atom instance", () => {
 
   it("has a readonly public instance member @@ref which is a number that acts as its unique ID", () => {
     const a = Atom.from(1);
-    console.log(a);
     expect(a instanceof Atom<number>).toBeTruthy();
 
     expect(() => {
