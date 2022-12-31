@@ -6,7 +6,6 @@ export function throwIsNotAtom(atom: any): Result<
 > {
     if (!atom["@@ref"]) {
         const atomStr = atom.toString();
-        console.log("ATOM STR", atomStr);
         return err(`Provided value \n${atomStr}\n is not a valid atom.`);
     }
 

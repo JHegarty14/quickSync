@@ -7,7 +7,7 @@ module.exports = {
       "^.+\\.(ts|tsx)$": "ts-jest",
     },
     coverageDirectory: "./test-reports",
-    collectCoverageFrom: ["src/**/*.ts"],
+    collectCoverageFrom: ["src/**/*.ts", "!src/test/scripts/**"],
     moduleNameMapper: {
       "^src/(.*)$": "<rootDir>/src/$1",
     },

@@ -26,14 +26,11 @@ export class AtomStateProxy {
 
     createAtom<T>(atomRef: string, state: T): void {
         const payload = { state };
-        console.log(`${atomRef} PAYLOAD: `, payload);
-        const result = sharedMemoryNode.createAtom(atomRef, JSON.stringify(payload));
-        console.log(atomRef, result);
+        sharedMemoryNode.createAtom(atomRef, JSON.stringify(payload));
     }
 
     getState<T>(atom: Atom<T>): DeepImmutable<T> {
         const value = sharedMemoryNode.getAtomValue(atom["@@ref"]);
-        console.log(`${atom["@@ref"]}`, value);
         return JSON.parse(value).state;
     }
 
