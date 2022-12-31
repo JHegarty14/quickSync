@@ -5,7 +5,7 @@
             "sources": ["sharedMemory.cpp"],
             "include_dirs": [
                 "<!(node -p \"require('node-addon-api').include_dir\")",
-                "deps/rapidjson" 
+                "./deps/rapidjson" 
             ],
             'cflags': [ '-fno-exceptions' ],
             'cflags_cc': [ '-fno-exceptions' ],
