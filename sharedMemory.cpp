@@ -1,5 +1,6 @@
 #include <napi.h>
 #include <semaphore.h>
+#include <fcntl.h>
 #include <mutex>
 #include <iostream>
 #include <unordered_map>
