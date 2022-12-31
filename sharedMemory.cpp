@@ -3,9 +3,9 @@
 #include <mutex>
 #include <iostream>
 #include <unordered_map>
-#include "rapidjson/document.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
+#include "deps/rapidjson/document.h"
+#include "deps/rapidjson/writer.h"
+#include "deps/rapidjson/stringbuffer.h"
 
 Napi::String DocumentToString(const Napi::Env& env, const rapidjson::Document& doc) {
   rapidjson::StringBuffer buf;
