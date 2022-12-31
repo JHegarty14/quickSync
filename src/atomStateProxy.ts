@@ -45,4 +45,9 @@ export class AtomStateProxy {
     deleteAtom<T>(atom: Atom<T>): void {
         sharedMemoryNode.deleteAtom(atom["@@ref"]);
     }
+
+    resetAtom<T>(atom: Atom<T>, value: T): void {
+        const payload = { state: value };
+        sharedMemoryNode.resetAtom(atom["@@ref"], JSON.stringify(payload));
+    }
 }
