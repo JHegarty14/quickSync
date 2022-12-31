@@ -1,1 +1,0 @@
-cmd_Release/sharedMemoryNode.node := c++ -bundle -stdlib=libc++ -undefined dynamic_lookup -Wl,-search_paths_first -mmacosx-version-min=10.7 -arch x86_64 -L./Release -stdlib=libc++  -o Release/sharedMemoryNode.node Release/obj.target/sharedMemoryNode/sharedMemory.o 
