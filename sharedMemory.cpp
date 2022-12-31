@@ -70,6 +70,16 @@ class Atom {
       return this->CompareAndSwap(callback);
     }
 
+    bool ResetAtomValue(const char * newValue) {
+      sem_wait(_semaphore);
+      std::lock_guard<std::mutex> lock(_mutex);
+      rapidjson::Document document;
+      document.Parse(newValue);
+      _atomValue = std::make_shared<rapidjson::Document>(std::move(document));
+      sem_post(_semaphore);
+      return true;
+    }
+
   private:
     sem_t* _semaphore;
     std::mutex _mutex;
@@ -176,9 +186,42 @@ Napi::Value DeleteAtom(const Napi::CallbackInfo& info) {
 
   std::shared_ptr<Atom> atom = atomMap[atomRef];
 
+  if (atom == nullptr) {
+    Napi::Error::New(env, "Atom not found").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
   atom->~Atom();
 
   atomMap.erase(atomRef);
+
+  return Napi::Boolean::New(env, true);
+}
+
+Napi::Value ResetAtom(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+
+  if (info.Length() < 2) {
+    Napi::TypeError::New(env, "Wrong number of arguments").ThrowAsJavaScriptException();
+  }
+
+  if (!info[0].IsString()) {
+    Napi::TypeError::New(env, "Expected arg for atomRef to be string.").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  std::string atomRef = info[0].As<Napi::String>().ToString();
+
+  std::shared_ptr<Atom> atom = atomMap[atomRef];
+
+  if (atom == nullptr) {
+    Napi::Error::New(env, "Atom not found").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  std::string atomValue = info[1].As<Napi::String>().ToString();
+
+  atom->ResetAtomValue(atomValue.c_str());
 
   return Napi::Boolean::New(env, true);
 }
@@ -188,6 +231,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set(Napi::String::New(env, "getAtomValue"), Napi::Function::New(env, GetAtomValue));
   exports.Set(Napi::String::New(env, "compareAndSwap"), Napi::Function::New(env, CompareAndSwap));
   exports.Set(Napi::String::New(env, "deleteAtom"), Napi::Function::New(env, DeleteAtom));
+  exports.Set(Napi::String::New(env, "resetAtom"), Napi::Function::New(env, ResetAtom));
 
   return exports;
 }
