@@ -38,6 +38,10 @@ export class AtomStateProxy {
         sharedMemoryNode.compareAndSwap(atom["@@ref"], (loadedValue: string) => {
             const parsed = JSON.parse(loadedValue).state;
             const state = updateFn(parsed, ...args);
+            if (atom.validatorFn) {
+                const valid = atom.validatorFn(state);
+                if (!valid) throw new Error("Invalid new state for atom");
+            }
             return JSON.stringify({ state });
         });
     }
@@ -48,6 +52,10 @@ export class AtomStateProxy {
 
     resetAtom<T>(atom: Atom<T>, value: T): void {
         const payload = { state: value };
+        if (atom.validatorFn) {
+            const valid = atom.validatorFn(value);
+            if (!valid) throw new Error("Invalid new state for atom");
+        }
         sharedMemoryNode.resetAtom(atom["@@ref"], JSON.stringify(payload));
     }
 }

@@ -13,4 +13,23 @@ describe("Atom instance", () => {
       (a as any).uwrap()["@@ref"] = 1000e10;
     }).toThrow(TypeError);
   });
+
+  it("can accept a validator function on construction", () => {
+    const a = Atom.from(1, (v) => {
+      return v > 0;
+    });
+
+    expect(a instanceof Atom<number>).toBeTruthy();
+    expect(a.validatorFn).toBeInstanceOf(Function);
+  });
+
+  it("can set a validator function after construction", () => {
+    const a = Atom.from(1);
+    a.setValidator((v) => {
+      return v > 0;
+    });
+
+    expect(a instanceof Atom<number>).toBeTruthy();
+    expect(a.validatorFn).toBeInstanceOf(Function);
+  });
 });

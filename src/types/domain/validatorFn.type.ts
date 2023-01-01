@@ -1,0 +1,1 @@
+export type ValidatorFn<T> = (newState: T) => boolean;
