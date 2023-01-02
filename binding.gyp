@@ -7,6 +7,8 @@
                 "<!(node -p \"require('node-addon-api').include_dir\")",
                 "./deps/rapidjson" 
             ],
+            "cflags!": ["-fno-exceptions"],
+            "cxxflags": ["-fexceptions"],
             "conditions": [
                 [ 'OS=="mac"', {
                     "xcode_settings": {
@@ -18,7 +20,17 @@
                         "CLANG_CXX_LANGUAGE_STANDARD":"c++17",
                         "CLANG_CXX_LIBRARY": "libc++"
                     }
-                }]
+                },
+                 'OS=="linux"', {
+                     "xcode_settings": {
+                        "OTHER_CPLUSPLUSFLAGS" : [ "-std=c++17", "-stdlib=libc++", "-pthread", '-frtti' ],
+                        "OTHER_CFLAGS": [ "-std=c++17", "-stdlib=libc++", "-pthread", '-frtti' ],
+                        "OTHER_LDFLAGS": [ "-stdlib=libc++" ],
+                        "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
+                        "CLANG_CXX_LANGUAGE_STANDARD":"c++17",
+                        "CLANG_CXX_LIBRARY": "libc++"
+                    }
+                 }]
             ],
         }
     ]
