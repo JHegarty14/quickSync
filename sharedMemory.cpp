@@ -1,3 +1,5 @@
+#define NAPI_CPP_EXCEPTIONS
+
 #include <napi.h>
 #include <semaphore.h>
 #include <fcntl.h>

@@ -7,31 +7,37 @@
                 "<!(node -p \"require('node-addon-api').include_dir\")",
                 "./deps/rapidjson" 
             ],
-            "conditions": [
-                [ 'OS=="mac"', {
-                    "defines": ["NAPI_CPP_EXCEPTIONS"],
-                    "xcode_settings": {
-                        "OTHER_CPLUSPLUSFLAGS" : [ "-std=c++17", "-stdlib=libc++", "-pthread", '-fexceptions', '-frtti' ],
-                        "OTHER_CFLAGS": [ "-std=c++17", "-stdlib=libc++", '-fexceptions' "-pthread",'-fexceptions', '-frtti' ],
-                        "OTHER_LDFLAGS": [ "-stdlib=libc++" ],
-                        "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
-                        "MACOSX_DEPLOYMENT_TARGET": "10.7",
-                        "CLANG_CXX_LANGUAGE_STANDARD":"c++17",
-                        "CLANG_CXX_LIBRARY": "libc++"
-                    }
-                },
-                 'OS=="linux"', {
-                    "defines": ["NAPI_CPP_EXCEPTIONS"],
-                     "xcode_settings": {
-                        "OTHER_CPLUSPLUSFLAGS" : [ "-std=c++17", "-stdlib=libc++", "-pthread", '-fexceptions', '-frtti' ],
-                        "OTHER_CFLAGS": [ "-std=c++17", "-stdlib=libc++", "-pthread", '-fexceptions', '-frtti' ],
-                        "OTHER_LDFLAGS": [ "-stdlib=libc++" ],
-                        "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
-                        "CLANG_CXX_LANGUAGE_STANDARD":"c++17",
-                        "CLANG_CXX_LIBRARY": "libc++"
-                    }
-                 }]
+            "cflags!": [
+            "-fno-exceptions"
             ],
+            "cflags_cc!": [
+            "-fno-exceptions"
+            ],
+            "conditions": [
+                [
+                    "OS=='win'", {
+                    "msvs_settings": {
+                        "VCCLCompilerTool": {
+                        "ExceptionHandling": 1
+                        }
+                    }
+                    }
+                ],
+                [
+                    "OS=='mac' or OS=='linux'", {
+                    "xcode_settings": {
+                        "OTHER_CFLAGS": ["-fexceptions"],
+                        "OTHER_CPLUSPLUSFLAGS": ["-fexceptions"],
+                    },
+                    "link_settings": {
+                        "OTHER_LDFLAGS": ["-rdynamic"]
+                    }
+                    }
+                ]
+            ],
+            "xcode-settings": {
+                "GCC_ENABLE_CPP_EXCEPTIONS": "YES"
+            }
         }
     ]
 }
