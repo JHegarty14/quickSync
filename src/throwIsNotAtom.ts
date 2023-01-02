@@ -1,12 +1,12 @@
+import { Atom } from "./atom";
 import { Result, err, ok } from "./lib/result";
 
-export function throwIsNotAtom(atom: any): Result<
+export function throwIsNotAtom(atom: Atom<any>): Result<
     boolean,
     string
 > {
-    if (!atom["@@ref"]) {
-        const atomStr = atom.toString();
-        return err(`Provided value \n${atomStr}\n is not a valid atom.`);
+    if (!(atom instanceof Atom)) {
+        return err(`Value is not a valid atom.`);
     }
 
     return ok(true);

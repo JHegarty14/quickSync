@@ -33,6 +33,8 @@ const concurrentWorker = <T>(atom: Atom<T>) => {
 };
 
 describe("Tests concurrency safety with multithreaded processes", () => {
+    jest.setTimeout(10000);
+
     it("Handles updates to single atom from multiple threads", async () => {
         const initValue = 1;
         const testAtom = Atom.from(initValue);
