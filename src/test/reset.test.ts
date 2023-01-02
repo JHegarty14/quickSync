@@ -9,4 +9,14 @@ describe("Reset Atom tests", () => {
 
         expect(deref(atom)).toEqual(2);
     });
+
+    it("Should throw an error if validation fails", () => {
+        const atom = Atom.from<number>(1, (x: number) => x > 0);
+
+        try {
+            reset(atom, -1);
+        } catch (err: any) {
+            expect((err as Error).message).toEqual("Invalid new state for atom");
+        }
+    });
 });

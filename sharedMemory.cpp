@@ -1,3 +1,5 @@
+#define NAPI_CPP_EXCEPTIONS
+
 #include <napi.h>
 #include <semaphore.h>
 #include <fcntl.h>
@@ -33,8 +35,12 @@ class Atom {
     }
 
     ~Atom() {
-      sem_close(_semaphore);
-      sem_unlink(_atomName);
+      try {
+        sem_close(_semaphore);
+        sem_unlink(_atomName);
+      } catch (const std::exception& e) {
+        std::cout << e.what() << std::endl;
+      }
     }
 
     const char * GetAtomValue(Napi::Env env) {
@@ -58,8 +64,15 @@ class Atom {
       std::lock_guard<std::mutex> lock(_mutex);
       Napi::Env env = callback.Env();
       rapidjson::Document *currentDocument = _atomValue.get();
+      std::string callbackResult;
       if (_atomValue.get() == currentDocument) {
-        std::string callbackResult = callback.Call({ DocumentToString(env, *currentDocument) }).As<Napi::String>().Utf8Value();
+        try {
+          callbackResult = callback.Call({ DocumentToString(env, *currentDocument) }).As<Napi::String>().Utf8Value();
+        } catch (const Napi::Error& e) {
+          sem_post(_semaphore);
+          Napi::Error::New(env, e.Message()).ThrowAsJavaScriptException();
+          return false;
+        }
         rapidjson::Document newDocument;
         newDocument.Parse(callbackResult.c_str());
         _atomValue = std::make_shared<rapidjson::Document>(std::move(newDocument));

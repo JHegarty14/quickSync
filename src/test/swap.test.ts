@@ -60,4 +60,27 @@ describe("swap function", () => {
     expect(deref(testAtomB)).toEqual(b1);
     expect(deref(testAtomC)).toEqual(c1);
   });
+
+  it("works with provided validation function", () => {
+    const initialState = { count: 1 };
+    const testAtom = Atom.from(initialState,  (s) => s.count > 0);
+
+    const swapResult = swap(testAtom, (s: typeof initialState, n: number) => ({ count: s.count + n }), 2);
+
+    expect(swapResult.isOk()).toBe(true);
+    expect(swapResult.unwrap()).toBeNull();
+
+    expect(deref(testAtom)).toEqual({ count: 3 });
+  });
+
+  it("returns an error if the validation function fails", () => {
+    const initialState = { count: 1 };
+    const testAtom = Atom.from(initialState, (s) => s.count > 0);
+
+    const swapResult = swap(testAtom, (s: typeof initialState, n: number) => ({ count: s.count + n }), -2);
+
+    expect(swapResult.isErr()).toBe(true);
+
+    expect(deref(testAtom)).toEqual({ count: 1 });
+  });
 });
