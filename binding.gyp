@@ -9,6 +9,7 @@
             ],
             "conditions": [
                 [ 'OS=="mac"', {
+                    "defines": ["NAPI_CPP_EXCEPTIONS"],
                     "xcode_settings": {
                         "OTHER_CPLUSPLUSFLAGS" : [ "-std=c++17", "-stdlib=libc++", "-pthread", '-frtti' ],
                         "OTHER_CFLAGS": [ "-std=c++17", "-stdlib=libc++", "-pthread", '-frtti' ],
@@ -20,6 +21,7 @@
                     }
                 },
                  'OS=="linux"', {
+                    "defines": ["NAPI_CPP_EXCEPTIONS"],
                      "xcode_settings": {
                         "OTHER_CPLUSPLUSFLAGS" : [ "-std=c++17", "-stdlib=libc++", "-pthread", '-frtti' ],
                         "OTHER_CFLAGS": [ "-std=c++17", "-stdlib=libc++", "-pthread", '-frtti' ],
