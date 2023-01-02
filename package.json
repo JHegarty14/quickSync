@@ -31,6 +31,7 @@
   },
   "scripts": {
     "build": "rollup -c rollup.config.js --bundleConfigAsCjs",
+    "install": "node-gyp build --cxxflags='-fexceptions'",
     "test": "jest",
     "test:ci": "jest --ci --coverage",
     "test:watch": "jest --watch",

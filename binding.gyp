@@ -7,8 +7,6 @@
                 "<!(node -p \"require('node-addon-api').include_dir\")",
                 "./deps/rapidjson" 
             ],
-            "cflags!": ["-fno-exceptions"],
-            "cxxflags": ["-fexceptions"],
             "conditions": [
                 [ 'OS=="mac"', {
                     "xcode_settings": {
