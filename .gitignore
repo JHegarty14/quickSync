@@ -152,6 +152,8 @@ ipch/
 *.vspx
 *.sap
 
+processed.txt
+
 # Visual Studio Trace Files
 *.e2e
 
