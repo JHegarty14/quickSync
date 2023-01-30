@@ -1,4 +1,6 @@
-import { Atom } from "..";
+import { Atom, addAtomWatcher, swap } from "..";
+import { AtomStateProxy } from "../atomStateProxy";
+import { setAtomValidator } from "../validator";
 
 describe("Atom instance", () => {
   it("can be instantiated by the static Atom.of method", () => {
@@ -20,16 +22,27 @@ describe("Atom instance", () => {
     });
 
     expect(a instanceof Atom<number>).toBeTruthy();
-    expect(a.validatorFn).toBeInstanceOf(Function);
+    expect(AtomStateProxy.setValidator).toHaveBeenCalledWith(a, expect.any(Function));
   });
 
   it("can set a validator function after construction", () => {
     const a = Atom.from(1);
-    a.setValidator((v) => {
+    setAtomValidator(a, (v) => {
       return v > 0;
     });
 
     expect(a instanceof Atom<number>).toBeTruthy();
-    expect(a.validatorFn).toBeInstanceOf(Function);
+    expect(AtomStateProxy.setValidator).toHaveBeenCalledWith(a, expect.any(Function));
+  });
+
+  it("can define watchers which are called with the correct args on state change", () => {
+    const a = Atom.from(1);
+    const spy = jest.fn();
+    addAtomWatcher(a, "test", spy);
+
+    const swapRes = swap(a, (v) => v + 1);
+
+    expect(swapRes.isOk()).toBeTruthy();
+    expect(spy).toBeCalledWith(a["@@ref"], 1, 2);
   });
 });

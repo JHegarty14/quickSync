@@ -1,4 +1,4 @@
-import { Primitive } from "./primitive";
+import { Primitive } from "./primitive.type";
 
 export type Immutable<T> = T extends Primitive
   ? T

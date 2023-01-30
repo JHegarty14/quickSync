@@ -1,5 +1,5 @@
 import { Worker } from "worker_threads";
-import { deref } from "..";
+import { addAtomWatcher, deref, setAtomValidator } from "..";
 import { Atom } from "../atom";
 
 const concurrentWorker = <T>(atom: Atom<T>) => {
@@ -47,5 +47,32 @@ describe("Tests concurrency safety with multithreaded processes", () => {
 
         const updatedValue = deref(testAtom);
         expect(updatedValue).toEqual(7);
+    });
+
+    it("Handles updates to multiple atoms from multiple threads and calls correct watcher", async () => {
+        const atomA = Atom.from(1);
+        const atomB = Atom.from(5);
+        const spyA = jest.fn().mockImplementation();
+        const spyB = jest.fn().mockImplementation();
+        setAtomValidator(atomA, v => true);
+        addAtomWatcher( atomA, "atomA", spyA);
+        addAtomWatcher(atomB, "atomB", spyB);
+
+        const workers = [
+            concurrentWorker(atomA),
+            concurrentWorker(atomA),
+            concurrentWorker(atomB),
+        ];
+        await Promise.all(workers);
+
+        const updatedValueA = deref(atomA);
+        expect(updatedValueA).toEqual(5);
+        const updatedValueB = deref(atomB);
+        expect(updatedValueB).toEqual(7);
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        expect(spyA).toHaveBeenCalledTimes(2);
+        expect(spyB).toHaveBeenCalledTimes(1);
     });
 });
